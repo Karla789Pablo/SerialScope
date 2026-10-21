@@ -27,10 +27,12 @@ jobs:
         with:
           node-version: 20
 
+      - name: Update npm
+        run: npm install --global npm@latest
+
       - name: Install dependencies
-        run: |
-          cd WebInterface
-          npm install
+        working-directory: WebInterface
+        run: npm install
 
       - name: Build project
         run: |
