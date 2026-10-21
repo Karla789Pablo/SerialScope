@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador - SerialScope</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/visualizacion.js"></script>
+
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+<body>
+
+    <!-- Reloj Digital Flotante -->
+    <div id="reloj-digital" class="clock-floating shadow-lg">
+        00:00:00.000
+    </div>
+
+    <div id="header-placeholder"></div>
+
+    <main class="container my-5">
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-purple mb-3">Visualizador</h1>
+        </div>
+
+        <section class="mb-5">
+            <div class="alert alert-light shadow-lg border border-purple" style="border-width: 2px !important;">
+                <h2 class="alert-heading text-purple fw-bold text-center display-6 mb-4">
+                    <i class="bi bi-book"></i> Guía Rápida del Visualizador
+                </h2>
+                <hr class="border-purple">
+                <ul class="mb-0 text-dark">
+                    <li class="mb-2"><strong class="text-purple">Paso 1:</strong> Conecta tu computadora a la red WiFi
+                        <b>SerialScope_Visualizador</b> y luego pulsa <b>Vincular vía WiFi</b>.
+                    </li>
+                    <li class="mb-2"><strong class="text-purple">Paso 2:</strong> Selecciona el protocolo (UART, I²C o
+                        SPI) y configura sus parámetros.</li>
+                    <li class="mb-2"><strong class="text-purple">Paso 3:</strong> Pulsa <b>Aplicar al Hardware</b> para
+                        activar la escucha pasiva en el bus.</li>
+                    <li><strong class="text-purple">Nota:</strong>
+                        <b>I²C y SPI</b> funcionan en modo <b>Sniffing pasivo</b> (solo escucha).
+                        <b>UART</b> funciona en modo <b>Proxy transparente</b> (reenvía entre ambos lados del
+                        canal).
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Guía rápida de Leds -->
+        <section class="mb-5">
+            <div class="alert alert-light shadow-lg border border-purple" style="border-width: 2px !important;">
+                <h2 class="alert-heading text-purple fw-bold text-center display-6 mb-4">
+                    <i class="bi bi-lightbulb-fill"></i> Guía de LEDs (Indicadores)
+                </h2>
+                <hr class="border-purple">
+                <ul class="mb-0 text-dark">
+                    <li class="mb-2">⚪ <strong class="text-dark"> Blanco (Estado Wi-Fi):</strong> Parpadea cuando no hay
+                        clientes conectados. Se queda fijo al vincular. </li>
+                    <li class="mb-2">🟢 <strong class="text-success">Verde (Éxito, Error):</strong> Destella al recibir
+                        un PING o se queda prendido cuando se marca un error en el protocolo. </li>
+                    <li class="mb-2">🔴 <strong class="text-danger">Rojo (UART):</strong> Indica actividad en el puente
+                        UART. </li>
+                    <li class="mb-2">🟡 <strong class="text-warning">Amarillo (I2C):</strong> Indica actividad en el bus
+                        I2C. </li>
+                    <li class="mb-2">🔵 <strong class="text-primary">Azul (SPI):</strong> Indica actividad en el bus
+                        SPI. </li>
+                    <li class="mb-2">🔵 <strong class="text-primary">Azul (Frecuencia de SPI):</strong> Indica la
+                        frecuencia del reloj en SPI cuando esta en modo activo. </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Sección de Conexión del Proxy -->
+        <section id="seccion-conexion" class="mb-5 p-4 bg-light rounded-4 shadow-lg border-start border-purple"
+            style="border-left-width: 5px !important;">
+            <div class="mx-auto text-center" style="max-width: 800px;">
+                <div class="mb-4">
+                    <h2 class="text-purple fw-bold">
+                        <i class="bi bi-wifi"></i> Enlace WiFi con Visualizador
+                    </h2>
+                    <p class="text-muted">
+                        En esta sección podrás unificar el control del ESP32 como sniffer.
+                        Únicamente es necesario conectar a la red <b>SerialScope_Visualizador</b> para iniciar
+                        el flujo de datos. (ip:192.168.4.1)
+                    </p>
+                </div>
+
+                <div class="d-flex justify-content-center">
+                    <div class="p-4 bg-white rounded-4 shadow-sm border border-purple"
+                        style="max-width: 450px; width: 100%;">
+                        <div id="status-analizador" class="badge bg-secondary mb-3 p-2 px-3">DESCONECTADO</div>
+
+                        <div class="input-group mb-3 px-3">
+                            <span class="input-group-text bg-light border-purple text-purple small">IP:</span>
+                            <input type="text" id="proxy-ip-addr" class="form-control border-purple small"
+                                value="192.168.4.1">
+                        </div>
+
+                        <button type="button" id="btn-conectar-analizador" class="btn btn-purple btn-lg w-100 shadow-sm"
+                            onclick="conectarAnalizador()">
+                            <i class="bi bi-link-45deg"></i> Vincular vía WiFi
+                        </button>
+
+                        <div class="border-top mt-3 pt-3 d-flex flex-column gap-2">
+                            <button id="btn-ping" class="btn btn-outline-info w-100" onclick="probarPing()" disabled>
+                                <i class="bi bi-terminal"></i> Probar Conexión (PING)
+                            </button>
+                            <small class="text-muted text-center" style="font-size: 0.7rem;">
+                                <i class="bi bi-info-circle"></i> Una vez vinculado, podrás configurar los protocolos
+                                abajo.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Panel de Configuración de Protocolo -->
+        <section id="panel-config-proxy" class="mb-5">
+            <div class="p-4 bg-light rounded-4 shadow-lg border-start border-purple"
+                style="border-left-width: 5px !important;">
+                <h5 class="text-purple fw-bold mb-3"><i class="bi bi-cpu"></i> Configuración del Protocolo</h5>
+                <select id="protocoloSelect" class="form-select mb-3 border-2" disabled
+                    onchange="actualizarConfiguracion(this.id); marcarProxyDesincronizado()">
+                    <optgroup label="UART / UART">
+                        <option value="UART">UART (Proxy Transparente)</option>
+                    </optgroup>
+                    <optgroup label="I²C">
+                        <option value="I2C">I²C (Sniffing)</option>
+                        <option value="I2C_MASTER">I²C (Maestro Activo)</option>
+                        <option value="I2C_SLAVE">I²C (Esclavo Emulado)</option>
+                    </optgroup>
+                    <optgroup label="SPI">
+                        <option value="SPI">SPI (Sniffing)</option>
+                        <option value="SPI_MASTER">SPI (Maestro Activo)</option>
+                        <option value="SPI_SLAVE">SPI (Esclavo Emulado)</option>
+                    </optgroup>
+                </select>
+
+                <div id="config-detalles-container">
+                    <hr class="text-purple opacity-25">
+                    <div id="configuracionDinamica"></div>
+                </div>
+
+                <div class="mt-4 d-flex align-items-center gap-3">
+                    <button id="btn-aplicar-config-proxy" class="btn btn-purple flex-grow-1 fw-bold shadow-sm" disabled
+                        onclick="enviarConfiguracionFisica()">
+                        <i class="bi bi-check2-circle"></i> Aplicar al Hardware
+                    </button>
+                    <span id="sync-status-proxy" class="badge bg-warning text-dark px-3 py-2 shadow-sm">
+                        <i class="bi bi-exclamation-triangle-fill"></i> Desincronizado
+                    </span>
+                </div>
+
+                <div id="active-modes-controls" class="mt-3" style="display: none;">
+                    <div id="master-send-config">
+                        <label class="small fw-bold text-muted mb-2">Operaciones de Maestro</label>
+
+                        <!-- Controles I2C Maestro -->
+                        <div id="i2c-master-controls" style="display: none;">
+                            <ul class="nav nav-pills nav-fill mb-3" id="i2c-master-tabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active py-1" id="tab-i2c-write" data-bs-toggle="pill"
+                                        data-bs-target="#pane-i2c-write" type="button" role="tab"
+                                        style="font-size: 0.85rem;">Escribir a Esclavo</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-1" id="tab-i2c-read" data-bs-toggle="pill"
+                                        data-bs-target="#pane-i2c-read" type="button" role="tab"
+                                        style="font-size: 0.85rem;">Leer de Esclavo</button>
+                                </li>
+                            </ul>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <input type="text" id="i2cTargetAddr"
+                                        class="form-control form-control-sm border-purple fw-bold text-center"
+                                        placeholder="Addr (0x48 o 48)">
+                                </div>
+                                <div class="col-6">
+                                    <input type="text" id="i2cTargetReg"
+                                        class="form-control form-control-sm border-purple fw-bold text-center"
+                                        placeholder="Reg (0x03 o 03)">
+                                </div>
+                            </div>
+
+                            <div class="tab-content" id="i2c-master-tabContent">
+                                <!-- Pestaña Escribir -->
+                                <div class="tab-pane fade show active" id="pane-i2c-write" role="tabpanel">
+                                    <div class="input-group input-group-sm mb-1">
+                                        <input type="text" id="i2cWriteData" class="form-control border-purple"
+                                            placeholder="Bytes en HEX separados por comas (Ej: 28, 00)">
+                                        <button class="btn btn-purple" onclick="enviarI2CWrite()"><i
+                                                class="bi bi-pencil"></i> Escribir</button>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">Se enviará a la dirección y
+                                        registro especificados arriba.</small>
+                                </div>
+                                <!-- Pestaña Leer -->
+                                <div class="tab-pane fade" id="pane-i2c-read" role="tabpanel">
+                                    <div class="input-group input-group-sm mb-2 mt-2">
+                                        <span class="input-group-text bg-light text-muted border-purple"
+                                            style="font-size: 0.8rem;">Bytes:</span>
+                                        <input type="number" id="i2cReadBytes" class="form-control border-purple"
+                                            placeholder="1" value="1">
+                                        <button class="btn btn-outline-purple fw-bold" onclick="enviarI2CRead()"><i
+                                                class="bi bi-download"></i> Solicitar</button>
+                                    </div>
+                                    <div class="p-2 bg-white border border-purple rounded"
+                                        style="background-color: #fcfaff !important;">
+                                        <label class="small fw-bold text-purple mb-1">Respuesta del Esclavo:</label>
+                                        <div id="i2cReadResponse"
+                                            class="font-monospace small text-dark fw-bold text-wrap"
+                                            style="min-height: 20px;">Esperando lectura...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Controles SPI Maestro -->
+                        <div id="spi-master-controls" style="display: none;">
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" id="spiTransferData" class="form-control border-purple"
+                                    placeholder="Datos a transferir (HEX) : 00 00 o FF AA 12">
+                                <button class="btn btn-purple" onclick="enviarSPITransfer()"><i
+                                        class="bi bi-arrow-left-right"></i> Transferir</button>
+                            </div>
+                            <div id="spi-master-result-container" class="p-2 bg-white border border-purple rounded" style="display:none; background-color: #fcfaff !important;">
+                                <label class="small fw-bold text-purple mb-1">Respuesta del Dispositivo (MISO):</label>
+                                <div id="spiMasterResponse" class="font-monospace small text-dark fw-bold text-wrap">Esperando...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+
+
+
+        <section id="seccion-visualizacion" class="mb-5 p-4 bg-light rounded-4 shadow-lg border-start border-purple"
+            style="border-left-width: 5px !important;">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold text-purple mb-2">
+                    <i class="bi bi-activity"></i> Visualizador Multi-Canal
+                </h3>
+                <div class="d-flex justify-content-center align-items-center gap-3 mb-2 flex-wrap">
+                    <button id="btn-pause-chart" class="btn btn-sm btn-purple shadow-sm" onclick="togglePause()">
+                        <i class="bi bi-pause-fill"></i> Pausar Captura
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="resetCharts()">
+                        <i class="bi bi-trash"></i> Limpiar Gráficos
+                    </button>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="chartSizeSelect" class="small fw-bold text-muted mb-0"><i
+                                class="bi bi-aspect-ratio"></i> Tamaño:</label>
+                        <select id="chartSizeSelect" class="form-select form-select-sm border-primary"
+                            style="width: auto;" onchange="changeChartSize(this.value)">
+                            <option value="50">50 Puntos (Zoom Máximo)</option>
+                            <option value="100">100 Puntos (Primer Plano)</option>
+                            <option value="150">150 Puntos (Corto)</option>
+                            <option value="300" selected>300 Puntos (Normal)</option>
+                            <option value="700">700 Puntos (Panorámico)</option>
+                            <option value="1200">1200 Puntos (Ultra Ancho)</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Control de Navegación Histórica -->
+                <div id="history-navigator" class="mt-2 px-4" style="display: none;">
+                    <label class="small fw-bold text-muted d-block mb-1">Navegar en el tiempo (Historial)</label>
+                    <input type="range" class="form-range custom-range" id="chartHistoryRange" min="0" max="0" value="0"
+                        oninput="navigateHistory(this.value)">
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>Pasado</span>
+                        <span id="history-offset-label">Ahora</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Canal 1 -->
+                <div id="container-ch1" class="col-12 mb-4">
+                    <h6 class="text-uppercase fw-bold text-muted mb-2 text-start">
+                        <span id="badge-ch1" class="badge bg-info">CANAL 1 (Master Side)</span>
+                    </h6>
+                    <div class="oscilloscope-container p-2 bg-white rounded border position-relative"
+                        style="height: 180px;">
+                        <div id="overlay-ch1" class="chart-overlay d-flex align-items-center justify-content-center">
+                            <div class="text-center">
+                                <i class="bi bi-activity text-muted display-6 mb-1"></i>
+                                <div id="overlay-text-ch1" class="fw-bold text-muted small">SIN SEÑAL CH1</div>
+                            </div>
+                        </div>
+                        <canvas id="chartCH1"></canvas>
+                    </div>
+                </div>
+                <!-- Canal 2 -->
+                <div id="container-ch2" class="col-12">
+                    <h6 class="text-uppercase fw-bold text-muted mb-2 text-start">
+                        <span id="badge-ch2" class="badge bg-danger">CANAL 2 </span>
+                    </h6>
+                    <div class="oscilloscope-container p-2 bg-white rounded border position-relative"
+                        style="height: 180px;">
+                        <div id="overlay-ch2" class="chart-overlay d-flex align-items-center justify-content-center">
+                            <div class="text-center">
+                                <i class="bi bi-activity text-muted display-6 mb-1"></i>
+                                <div id="overlay-text-ch2" class="fw-bold text-muted small">SIN SEÑAL CH2</div>
+                            </div>
+                        </div>
+                        <canvas id="chartCH2"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Decodificación -->
+        <section id="seccion-decodificacion" class="mb-5 p-4 bg-light rounded-4 shadow-lg border-top border-purple"
+            style="border-top-width: 4px !important;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold text-purple mb-0">
+                    <i class="bi bi-list-check"></i> Registro de Actividad
+                </h3>
+                <button class="btn btn-outline-danger btn-sm shadow-sm" onclick="clearData()" title="Limpiar Historial">
+                    <i class="bi bi-trash3-fill"></i> Limpiar Historial
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="bg-purple text-white">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Dirección</th>
+                            <th>Protocolo</th>
+                            <th>Mensaje / Dato</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="decodificacionBody">
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-5">
+                                <div style="font-size: 2rem; opacity: 0.2;"><i class="bi bi-inbox"></i></div>
+                                Esperando actividad en el bus...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Guía de Conexión Física -->
+        <section class="mb-5 p-4 bg-white rounded-4 shadow-lg border-start border-purple"
+            style="border-left-width: 5px !important;">
+            <h5 class="fw-bold text-purple border-bottom pb-2 mb-4 text-center">
+                <i class="bi bi-layout-wtf"></i> Guía de Conexión Física — ESP32 Visualizador
+            </h5>
+
+            <!-- LEDs -->
+            <h6 class="text-muted fw-bold mb-3"><i class="bi bi-lightbulb-fill"></i> LEDs Indicadores</h6>
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-4 col-lg text-center">
+                    <span class="badge bg-light text-dark border px-3 py-2 mb-1 d-block">GPIO 4 ⚪</span>
+                    <small class="text-muted">Estado WiFi</small>
+                </div>
+                <div class="col-6 col-md-4 col-lg text-center">
+                    <span class="badge bg-success px-3 py-2 mb-1 d-block">GPIO 13 🟢</span>
+                    <small class="text-muted">Error / PING</small>
+                </div>
+                <div class="col-6 col-md-4 col-lg text-center">
+                    <span class="badge bg-danger px-3 py-2 mb-1 d-block">GPIO 14 🔴</span>
+                    <small class="text-muted">Actividad UART</small>
+                </div>
+                <div class="col-6 col-md-4 col-lg text-center">
+                    <span class="badge bg-warning text-dark px-3 py-2 mb-1 d-block">GPIO 27 🟡</span>
+                    <small class="text-muted">Modo I2C </small>
+                </div>
+                <div class="col-6 col-md-4 col-lg text-center">
+                    <span class="badge bg-primary px-3 py-2 mb-1 d-block">GPIO 26 🔵</span>
+                    <small class="text-muted">Actividad SPI</small>
+                </div>
+                <div class="col-6 col-md-4 col-lg text-center">
+                    <span class="badge bg-primary px-3 py-2 mb-1 d-block">GPIO 25🔵</span>
+                    <small class="text-muted">Frecuencia SPI</small>
+                </div>
+            </div>
+
+            <hr class="opacity-25">
+
+            <!-- Buses -->
+            <h6 class="text-muted fw-bold mb-3"><i class="bi bi-diagram-3"></i> Buses de Captura</h6>
+            <div class="row g-4">
+                <!-- UART -->
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-4 border border-danger border-opacity-25 h-100 text-center">
+                        <h6 class="fw-bold text-danger mb-1"><i class="bi bi-serial-port"></i> UART</h6>
+                        <span class="badge bg-danger text-white mb-3">Proxy Transparente</span>
+                        <div class="mb-2">
+                            <span class="small fw-bold d-block mb-1 text-muted">Canal 1</span>
+                            <span class="badge border border-secondary text-dark bg-white px-2 py-1"><small>RX:</small>
+                                33 🟣</span>
+                            <span class="badge border border-secondary text-dark bg-white px-2 py-1"><small>TX:</small>
+                                32 🟤</span>
+                        </div>
+                        <div class="border-top pt-2 mt-2">
+                            <span class="small fw-bold d-block mb-1 text-muted">Canal 2</span>
+                            <span class="badge border border-secondary text-dark bg-white px-2 py-1"><small>RX:</small>
+                                16 🟣</span>
+                            <span class="badge border border-secondary text-dark bg-white px-2 py-1"><small>TX:</small>
+                                17 🟤</span>
+                        </div>
+                        <p class="mt-3 small text-muted">El ESP32 actúa como puente. Cruza RX de un lado con TX del
+                            otro.</p>
+                    </div>
+                </div>
+
+                <!-- I2C -->
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-4 border border-warning border-opacity-25 h-100 text-center">
+                        <h6 class="fw-bold text-warning mb-1"><i class="bi bi-diagram-2"></i> I²C</h6>
+                        <span class="badge bg-warning text-dark mb-3">Sniffing Pasivo</span>
+                        <div class="py-2">
+                            <span class="small fw-bold d-block mb-2 text-muted">Bus Único de Escucha</span>
+                            <span class="badge border border-secondary text-dark bg-white px-3 py-2"
+                                style="font-size:1rem;"><small>SCL:</small> 22 🟡</span>
+                            <span class="badge border border-secondary text-dark bg-white px-3 py-2"
+                                style="font-size:1rem;"><small>SDA:</small> 21 🟢</span>
+                            <p class="mt-3 small text-muted">Conecta en paralelo. Pin 22 (SCL) y Pin 21 (SDA).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SPI -->
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-4 border border-primary border-opacity-25 h-100 text-center">
+                        <h6 class="fw-bold text-primary mb-1"><i class="bi bi-usb-symbol"></i> SPI</h6>
+                        <span class="badge bg-primary text-white mb-3">Sniffing Pasivo</span>
+                        <div class="py-2">
+                            <span class="small fw-bold d-block mb-2 text-muted">Bus Único de Escucha</span>
+                            <div class="d-flex flex-wrap justify-content-center gap-2">
+                                <span
+                                    class="badge border border-secondary text-dark bg-white px-2 py-1"><small>SCK:</small>
+                                    18 🔘</span>
+                                <span
+                                    class="badge border border-secondary text-dark bg-white px-2 py-1"><small>MISO:</small>
+                                    19 ⚪</span>
+                                <span
+                                    class="badge border border-secondary text-dark bg-white px-2 py-1"><small>MOSI:</small>
+                                    23 🔵</span>
+                                <span
+                                    class="badge border border-secondary text-dark bg-white px-2 py-1"><small>CS:</small>
+                                    5 🟠</span>
+                            </div>
+                            <p class="mt-3 small text-muted">Conexión en paralelo: Pines 18, 19, 23 y 5.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 text-center border-top pt-3">
+                <p class="mb-1 text-danger fw-bold small">
+                    <i class="bi bi-exclamation-triangle-fill"></i> GND común entre todos los dispositivos
+                    del bus.
+                </p>
+                <p class="mb-0 text-muted" style="font-size: 0.7rem;">
+                    Todos los pines operan a 3.3V. No conectar señales de 5V sin convertidor de nivel.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="footer-placeholder"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
