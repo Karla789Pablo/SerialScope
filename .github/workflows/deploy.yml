@@ -28,11 +28,11 @@ jobs:
           node-version: 20
       
       - name: Update npm
-        run: npm install --global npm@10.8.2
+        run: npm install --global npm@11.6.0
 
       - name: Install dependencies
         working-directory: WebInterface
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build project
         run: |
